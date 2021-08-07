@@ -2,25 +2,35 @@
 <html lang="en">
 <head>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css"
-          type="text/css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" type="text/css">
     <title>Upload Image to get Text</title>
 </head>
 <body>
 <main class="flex-shrink-0">
-
-    <section class="py-5 text-center container">
-        <div class="row py-lg-5">
+    <section class="py-4 text-center container">
+        <div class="row py-lg-5" id="input_section">
             <div class="col-lg-6 col-md-8 mx-auto">
                 <h1 class="fw-light">Upload Image</h1>
                 <p class="lead text-muted">Upload an Image to Extract Text from that. I have used EasyOCR and Google
                     Cloud's Vision AI to fetch the text out of image.</p>
                 <p>
                 <div class="row">
-                    <div class="col-12"><input type="file" id="file" name="file" accept="image/*" class="btn btn-primary my-2" title="Select File"></div>
-                    <div class="col-12"><button id="btn_upload" class="btn btn-secondary my-2">Upload</button></div>
+                    <div class="col-12"><input type="file" id="file" name="file" accept="image/*"
+                                               class="btn btn-primary my-2" title="Select File"></div>
+                    <div class="col-12">
+                        <button id="btn_upload" class="btn btn-secondary my-2">Upload</button>
+                    </div>
                 </div>
-                </p>
+            </div>
+        </div>
+        <div class="row text-center" id="processing" style="display: none">
+            <div class="col-lg-4 offset-lg-4 col-md-4 offset-md-4  col-sm-8 offset-sm-2 col-xs-12 offset-4 col-4 align-self-center">
+                <div class="text-center alert alert-info">
+                    <h5>Please wait, we're processing...</h5>
+                    <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="sr-only"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -70,34 +80,47 @@
             var fd = new FormData();
             var files = $('#file')[0].files[0];
             fd.append('file', files);
+            if ($('#file').val()) {
+                $.ajax({
+                    beforeSend: function () {
+                        $("#processing").hide();
+                        $("#processing").show();
+                        $("#input_section").hide();
+                        $("#easy_ocr_result").empty();
+                        $("#gv_result").empty();
+                    },
+                    url: upload_url,
+                    type: 'post',
+                    data: fd,
+                    contentType: false,
+                    processData: false,
+                    success: function (response) {
+                        if ($.trim(response).length > 10) {
+                            data = JSON.parse(response);
+                            console.log(data);
+                            $("#easy_ocr_result").html(data.e_ocr);
+                            full_text = "";
+                            segment_text = "<p><ul>";
+                            $.each(data.gv_ocr.text_segments, function (i, item) {
+                                segment_text += "<li>" + item + "</li>";
+                            });
+                            segment_text += "</ul></p>";
+                            full_text += "<p>" + data.gv_ocr.text + "</p>" + segment_text;
+                            $("#gv_result").html(full_text);
+                        } else {
+                            alert("Something went wrong please try again!");
+                        }
+                    },
+                    complete: function () {
+                        $("#processing").hide();
+                        $("#file").val(null);
+                        $("#input_section").show();
+                    }
+                });
+            } else {
+                alert("Please select image file");
+            }
 
-            $.ajax({
-                url: upload_url,
-                type: 'post',
-                data: fd,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    if ($.trim(response).length > 10)
-                    {
-                        data = JSON.parse(response);
-                        console.log(data);
-                        $("#easy_ocr_result").html(data.e_ocr);
-                        full_text = "";
-                        segment_text = "<p><ul>";
-                        $.each(data.gv_ocr.text_segments, function(i, item) {
-                            segment_text += "<li>"+item+"</li>";
-                        });
-                        segment_text += "</ul></p>";
-                        full_text += "<p>"+data.gv_ocr.text+"</p>"+segment_text;
-                        $("#gv_result").html(full_text);
-                    }
-                    else
-                    {
-                        alert("Something went wrong please try again!");
-                    }
-                },
-            });
         });
     });
 </script>
